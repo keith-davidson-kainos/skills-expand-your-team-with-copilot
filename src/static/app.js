@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Search and filter elements
   const searchInput = document.getElementById("activity-search");
   const searchButton = document.getElementById("search-button");
+  const difficultyFilters = document.querySelectorAll(".difficulty-filter");
   const categoryFilters = document.querySelectorAll(".category-filter");
   const dayFilters = document.querySelectorAll(".day-filter");
   const timeFilters = document.querySelectorAll(".time-filter");
@@ -37,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // State for activities and filters
   let allActivities = {};
+  let currentDifficulty = "";
   let currentFilter = "all";
   let searchQuery = "";
   let currentDay = "";
@@ -460,6 +462,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Apply difficulty filter
+      if (currentDifficulty) {
+        if (details.difficulty !== currentDifficulty) {
+          return;
+        }
+      } else if (details.difficulty) {
+        return;
+      }
+
       // Apply weekend filter if selected
       if (currentTimeRange === "weekend" && details.schedule_details) {
         const activityDays = details.schedule_details.days;
@@ -671,6 +682,17 @@ document.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
     searchQuery = searchInput.value;
     displayFilteredActivities();
+  });
+
+  // Add event listeners to difficulty filter buttons
+  difficultyFilters.forEach((button) => {
+    button.addEventListener("click", () => {
+      difficultyFilters.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      currentDifficulty = button.dataset.difficulty;
+      displayFilteredActivities();
+    });
   });
 
   // Add event listeners to category filter buttons
