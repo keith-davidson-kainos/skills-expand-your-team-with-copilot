@@ -960,3 +960,139 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeFilters();
   fetchActivities();
 });
+
+// Git branch background animation
+(function () {
+  const canvas = document.getElementById("git-bg-canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  const NUM_BRANCHES = 5;
+  const COMMIT_SPACING = 140;
+  const SCROLL_SPEED = 0.4;
+  const COMMIT_RADIUS = 5;
+
+  // Semi-transparent lime greens for the branch lines and commits
+  const BRANCH_COLORS = [
+    "rgba(90, 158, 0, 0.10)",
+    "rgba(125, 196, 0, 0.09)",
+    "rgba(86, 168, 50, 0.08)",
+    "rgba(59, 104, 0, 0.10)",
+    "rgba(100, 180, 20, 0.09)",
+  ];
+  const COMMIT_COLORS = [
+    "rgba(90, 158, 0, 0.22)",
+    "rgba(125, 196, 0, 0.20)",
+    "rgba(86, 168, 50, 0.20)",
+    "rgba(59, 104, 0, 0.22)",
+    "rgba(100, 180, 20, 0.20)",
+  ];
+  const CONNECTOR_COLOR = "rgba(90, 158, 0, 0.07)";
+
+  let commits = [];
+  let connections = [];
+  let offset = 0;
+  let maxX = 0;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    rebuildGraph();
+  }
+
+  function getBranchY(index) {
+    return ((index + 1) / (NUM_BRANCHES + 1)) * canvas.height;
+  }
+
+  function rebuildGraph() {
+    commits = [];
+    connections = [];
+    maxX = canvas.width + COMMIT_SPACING * 25;
+    offset = 0;
+    populate(0, maxX);
+  }
+
+  function populate(startX, endX) {
+    for (let b = 0; b < NUM_BRANCHES; b++) {
+      for (
+        let x = startX + COMMIT_SPACING;
+        x < endX;
+        x += COMMIT_SPACING * (0.9 + Math.random() * 0.4)
+      ) {
+        commits.push({ b, x });
+      }
+    }
+    // Add branch-to-branch connectors
+    for (let b = 0; b < NUM_BRANCHES - 1; b++) {
+      for (let x = startX + COMMIT_SPACING * 3; x < endX; x += COMMIT_SPACING * 7) {
+        if (Math.random() < 0.55) {
+          connections.push({ fromB: b, toB: b + 1, x });
+        }
+      }
+    }
+  }
+
+  function extendGraph() {
+    const rightEdge = offset + canvas.width;
+    const furthestX = commits.reduce((m, c) => Math.max(m, c.x), 0);
+    if (furthestX < rightEdge + COMMIT_SPACING * 15) {
+      const newStart = furthestX;
+      populate(newStart, newStart + COMMIT_SPACING * 20);
+    }
+    // Prune commits that have scrolled far off-screen
+    const leftEdge = offset - COMMIT_SPACING * 2;
+    if (commits.length > 800) {
+      commits = commits.filter((c) => c.x > leftEdge);
+      connections = connections.filter((c) => c.x > leftEdge);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw horizontal branch lines
+    ctx.lineWidth = 1.5;
+    for (let b = 0; b < NUM_BRANCHES; b++) {
+      const y = getBranchY(b);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.strokeStyle = BRANCH_COLORS[b];
+      ctx.stroke();
+    }
+
+    // Draw branch connectors (merges / forks)
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = CONNECTOR_COLOR;
+    for (const conn of connections) {
+      const x = conn.x - offset;
+      if (x < -80 || x > canvas.width + 80) continue;
+      const y1 = getBranchY(conn.fromB);
+      const y2 = getBranchY(conn.toB);
+      ctx.beginPath();
+      ctx.moveTo(x - 25, y1);
+      ctx.bezierCurveTo(x, y1, x, y2, x + 25, y2);
+      ctx.stroke();
+    }
+
+    // Draw commit nodes
+    for (const commit of commits) {
+      const x = commit.x - offset;
+      if (x < -15 || x > canvas.width + 15) continue;
+      const y = getBranchY(commit.b);
+      ctx.beginPath();
+      ctx.arc(x, y, COMMIT_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = COMMIT_COLORS[commit.b];
+      ctx.fill();
+    }
+
+    offset += SCROLL_SPEED;
+    extendGraph();
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener("resize", resize);
+  draw();
+})();
